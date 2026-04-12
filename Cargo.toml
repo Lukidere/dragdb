@@ -1,0 +1,12 @@
+[package]
+name = "relacyjne"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+argon2 = "0.5.3"
+jsonwebtoken = "10.3.0"
+rocket = { version = "0.5.1", features = ["json", "serde_json"] }
+serde = { version = "1.0.228", features = ["derive"] }
+sqlx = { version = "0.8.6", features = ["postgres", "runtime-tokio"] }
+tokio = { version = "1.51.1", features = ["macros", "test-util"] }
