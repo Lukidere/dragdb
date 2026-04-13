@@ -6,7 +6,6 @@ export default function Login() {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     
-    // Inicjalizacja funkcji nawigacji
     const navigate = useNavigate(); 
 
     const handleSubmit = async (e) => {
@@ -14,26 +13,54 @@ export default function Login() {
         setError('');
 
         try {
-           // Symulacja komunikacji z backendem i sprawdzania ról
-           if (username === 'admin' && password === '123') {
-               // Jeśli to admin, przekierowujemy na panel zarządzania
-               navigate('/admin'); 
-           } 
-           else if (username === 'nauczyciel' && password === '123') {
-               // Jeśli to nauczyciel, przekierowujemy do dziennika
-               navigate('/nauczyciel'); 
-           }
-           else if (username === 'uczen' && password === '123') {
-               // Jeśli to uczeń, przekierowujemy do jego ocen
-               navigate('/uczen'); 
-           }
-           else {
-               // Błędne dane
-               setError('Błędne dane logowania!');
-           }
+            // 1. Uderzamy do API (dzięki proxy w Vite to poleci do Swaggera lub Twojego backendu)
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                // Swagger wymaga pól "login" i "haslo", więc mapujemy nasze stany
+                body: JSON.stringify({ 
+                    login: username, 
+                    haslo: password 
+                })
+            });
+
+            // 2. Sprawdzamy, czy serwer nie zwrócił błędu (np. 401 - zły login/hasło)
+            if (!response.ok) {
+                if (response.status === 401) {
+                    throw new Error('Błędny login lub hasło!');
+                } else {
+                    throw new Error('Błąd serwera. Spróbuj ponownie później.');
+                }
+            }
+
+            // 3. Parsujemy odpowiedź z JSON-a
+            const data = await response.json();
+
+            // 4. Zapisujemy token (oraz rolę), żeby mieć do nich dostęp w innych miejscach apki
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('rola', data.rola);
+            localStorage.setItem('login', data.login);
+
+            // 5. Dynamiczne przekierowanie na podstawie roli z bazy danych
+            switch (data.rola) {
+                case 'ADMIN':
+                    navigate('/admin'); 
+                    break;
+                case 'NAUCZYCIEL':
+                    navigate('/nauczyciel'); 
+                    break;
+                case 'UCZEN':
+                    navigate('/uczen'); 
+                    break;
+                default:
+                    setError('Błąd: Nieznana rola użytkownika.');
+            }
 
         } catch (err) {
-            setError('Wystąpił błąd podczas logowania.');
+            // Wyłapujemy błędy z rzucania wyżej (throw new Error) lub problemy z siecią
+            setError(err.message || 'Wystąpił błąd podczas logowania.');
         }
     };
 
@@ -42,7 +69,7 @@ export default function Login() {
             <h2>Panel logowania</h2>
             <p>Wprowadź swoje dane, aby wejść do dziennika.</p>
 
-            {error && <p style={{ color: 'red', fontWeight: 'bold' }}>{error}</p>}
+            {error && <p style={{ color: 'red', fontWeight: 'bold', marginBottom: '10px' }}>{error}</p>}
 
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
