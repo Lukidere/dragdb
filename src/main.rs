@@ -22,6 +22,7 @@ async fn rocket() -> _ {
             admin_lista_uzytkownikow,
             admin_dodaj_uzytkownika,
             admin_usun_uzytkownika
+            login_handler
         ])
         .mount("/",FileServer::from(relative!("src/frontend/student_journal/dist/")))
 }
