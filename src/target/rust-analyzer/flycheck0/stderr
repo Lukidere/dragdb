@@ -1,53 +1,11 @@
-   0.100462388s  INFO prepare_target{force=false package_id=relacyjne v0.1.0 (/home/dhm/Studia/laby/bazy/relacyjne) target="relacyjne"}: cargo::core::compiler::fingerprint: fingerprint error for relacyjne v0.1.0 (/home/dhm/Studia/laby/bazy/relacyjne)/Check { test: false }/TargetInner { name: "relacyjne", doc: true, ..: with_path("/home/dhm/Studia/laby/bazy/relacyjne/src/main.rs", Edition2024) }
-   0.100484760s  INFO prepare_target{force=false package_id=relacyjne v0.1.0 (/home/dhm/Studia/laby/bazy/relacyjne) target="relacyjne"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/dhm/Studia/laby/bazy/relacyjne/target/debug/.fingerprint/relacyjne-1459a1a715ed7f16/bin-relacyjne`
-
-Caused by:
-    No such file or directory (os error 2)
-
-Stack backtrace:
-   0: <E as anyhow::context::ext::StdError>::ext_context
-   1: cargo_util::paths::read
-   2: cargo::core::compiler::fingerprint::prepare_target
-   3: cargo::core::compiler::compile
-   4: cargo::core::compiler::build_runner::BuildRunner::compile
-   5: cargo::ops::cargo_compile::compile_ws
-   6: cargo::ops::cargo_compile::compile_with_exec
-   7: cargo::ops::cargo_compile::compile
-   8: cargo::commands::check::exec
-   9: cargo::cli::Exec::exec
-  10: cargo::cli::main
-  11: cargo::main
-  12: std::sys::backtrace::__rust_begin_short_backtrace
-  13: std::rt::lang_start::{{closure}}
-  14: std::rt::lang_start_internal
-  15: main
-  16: __libc_start_call_main
-  17: __libc_start_main@@GLIBC_2.34
-  18: _start
-   0.108306999s  INFO prepare_target{force=false package_id=relacyjne v0.1.0 (/home/dhm/Studia/laby/bazy/relacyjne) target="relacyjne"}: cargo::core::compiler::fingerprint: fingerprint error for relacyjne v0.1.0 (/home/dhm/Studia/laby/bazy/relacyjne)/Check { test: true }/TargetInner { name: "relacyjne", doc: true, ..: with_path("/home/dhm/Studia/laby/bazy/relacyjne/src/main.rs", Edition2024) }
-   0.108316907s  INFO prepare_target{force=false package_id=relacyjne v0.1.0 (/home/dhm/Studia/laby/bazy/relacyjne) target="relacyjne"}: cargo::core::compiler::fingerprint:     err: failed to read `/home/dhm/Studia/laby/bazy/relacyjne/target/debug/.fingerprint/relacyjne-4c72154d1d7bd77f/test-bin-relacyjne`
-
-Caused by:
-    No such file or directory (os error 2)
-
-Stack backtrace:
-   0: <E as anyhow::context::ext::StdError>::ext_context
-   1: cargo_util::paths::read
-   2: cargo::core::compiler::fingerprint::prepare_target
-   3: cargo::core::compiler::compile
-   4: cargo::core::compiler::build_runner::BuildRunner::compile
-   5: cargo::ops::cargo_compile::compile_ws
-   6: cargo::ops::cargo_compile::compile_with_exec
-   7: cargo::ops::cargo_compile::compile
-   8: cargo::commands::check::exec
-   9: cargo::cli::Exec::exec
-  10: cargo::cli::main
-  11: cargo::main
-  12: std::sys::backtrace::__rust_begin_short_backtrace
-  13: std::rt::lang_start::{{closure}}
-  14: std::rt::lang_start_internal
-  15: main
-  16: __libc_start_call_main
-  17: __libc_start_main@@GLIBC_2.34
-  18: _start
+   0.105894754s  INFO prepare_target{force=false package_id=relacyjne v0.1.0 (/home/dhm/Studia/laby/bazy/relacyjne) target="relacyjne"}: cargo::core::compiler::fingerprint: stale: changed "/home/dhm/Studia/laby/bazy/relacyjne/src/main.rs"
+   0.105915784s  INFO prepare_target{force=false package_id=relacyjne v0.1.0 (/home/dhm/Studia/laby/bazy/relacyjne) target="relacyjne"}: cargo::core::compiler::fingerprint:           (vs) "/home/dhm/Studia/laby/bazy/relacyjne/target/debug/.fingerprint/relacyjne-8c7b159ed810fdf0/dep-bin-relacyjne"
+   0.105918549s  INFO prepare_target{force=false package_id=relacyjne v0.1.0 (/home/dhm/Studia/laby/bazy/relacyjne) target="relacyjne"}: cargo::core::compiler::fingerprint:                FileTime { seconds: 1776081615, nanos: 54277161 } < FileTime { seconds: 1776081637, nanos: 554992005 }
+   0.106113028s  INFO prepare_target{force=false package_id=relacyjne v0.1.0 (/home/dhm/Studia/laby/bazy/relacyjne) target="relacyjne"}: cargo::core::compiler::fingerprint: fingerprint dirty for relacyjne v0.1.0 (/home/dhm/Studia/laby/bazy/relacyjne)/Check { test: false }/TargetInner { name: "relacyjne", doc: true, ..: with_path("/home/dhm/Studia/laby/bazy/relacyjne/src/main.rs", Edition2024) }
+   0.106123568s  INFO prepare_target{force=false package_id=relacyjne v0.1.0 (/home/dhm/Studia/laby/bazy/relacyjne) target="relacyjne"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleItem(ChangedFile { reference: "/home/dhm/Studia/laby/bazy/relacyjne/target/debug/.fingerprint/relacyjne-8c7b159ed810fdf0/dep-bin-relacyjne", reference_mtime: FileTime { seconds: 1776081615, nanos: 54277161 }, stale: "/home/dhm/Studia/laby/bazy/relacyjne/src/main.rs", stale_mtime: FileTime { seconds: 1776081637, nanos: 554992005 } }))
+   0.111807475s  INFO prepare_target{force=false package_id=relacyjne v0.1.0 (/home/dhm/Studia/laby/bazy/relacyjne) target="relacyjne"}: cargo::core::compiler::fingerprint: stale: changed "/home/dhm/Studia/laby/bazy/relacyjne/src/main.rs"
+   0.111815209s  INFO prepare_target{force=false package_id=relacyjne v0.1.0 (/home/dhm/Studia/laby/bazy/relacyjne) target="relacyjne"}: cargo::core::compiler::fingerprint:           (vs) "/home/dhm/Studia/laby/bazy/relacyjne/target/debug/.fingerprint/relacyjne-208c6d0bad2cee13/dep-test-bin-relacyjne"
+   0.111817744s  INFO prepare_target{force=false package_id=relacyjne v0.1.0 (/home/dhm/Studia/laby/bazy/relacyjne) target="relacyjne"}: cargo::core::compiler::fingerprint:                FileTime { seconds: 1776081615, nanos: 54277161 } < FileTime { seconds: 1776081637, nanos: 554992005 }
+   0.111847701s  INFO prepare_target{force=false package_id=relacyjne v0.1.0 (/home/dhm/Studia/laby/bazy/relacyjne) target="relacyjne"}: cargo::core::compiler::fingerprint: fingerprint dirty for relacyjne v0.1.0 (/home/dhm/Studia/laby/bazy/relacyjne)/Check { test: true }/TargetInner { name: "relacyjne", doc: true, ..: with_path("/home/dhm/Studia/laby/bazy/relacyjne/src/main.rs", Edition2024) }
+   0.111854033s  INFO prepare_target{force=false package_id=relacyjne v0.1.0 (/home/dhm/Studia/laby/bazy/relacyjne) target="relacyjne"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleItem(ChangedFile { reference: "/home/dhm/Studia/laby/bazy/relacyjne/target/debug/.fingerprint/relacyjne-208c6d0bad2cee13/dep-test-bin-relacyjne", reference_mtime: FileTime { seconds: 1776081615, nanos: 54277161 }, stale: "/home/dhm/Studia/laby/bazy/relacyjne/src/main.rs", stale_mtime: FileTime { seconds: 1776081637, nanos: 554992005 } }))
     Checking relacyjne v0.1.0 (/home/dhm/Studia/laby/bazy/relacyjne)

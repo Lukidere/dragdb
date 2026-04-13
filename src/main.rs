@@ -1,4 +1,4 @@
-use rocket::fs::FileServer;
+use rocket::fs::{FileServer,relative};
 mod apis;
 use apis::*;
 use sqlx::{PgConnection, PgPool, postgres::PgConnectOptions};
@@ -13,8 +13,17 @@ use sqlx::{PgConnection, PgPool, postgres::PgConnectOptions};
 async fn rocket() -> _ {
     rocket::build()
         .manage(connect_to_postgres().await.unwrap())
-        .mount("/api",routes![get_klasa_data,get_single_uczen_data])
-        .mount("/",FileServer::from("static"))
+        .mount("/", routes![
+            nauczyciel_lista_przedmiotow,
+            nauczyciel_dodaj_ocene,
+            nauczyciel_lista_klas,
+            nauczyciel_uczniowie_w_klasie,
+            uczen_lista_ocen,
+            admin_lista_uzytkownikow,
+            admin_dodaj_uzytkownika,
+            admin_usun_uzytkownika
+        ])
+        .mount("/",FileServer::from(relative!("src/frontend/student_journal/dist/")))
 }
 
 

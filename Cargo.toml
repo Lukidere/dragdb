@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 argon2 = "0.5.3"
+chrono = { version = "0.4.44", features = ["serde"] }
 jsonwebtoken = "10.3.0"
 rocket = { version = "0.5.1", features = ["json", "serde_json"] }
 serde = { version = "1.0.228", features = ["derive"] }

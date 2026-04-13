@@ -2,9 +2,14 @@ use rocket::serde::json::Json;
 use rocket::serde::{Deserialize, Serialize};
 use rocket::{State, http::Status};
 use sqlx::PgPool;
+use argon2::{
+    password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
+    Argon2,
+};
+use std::collections::HashMap;
 
 // ==========================================
-// B) NAUCZYCIEL
+// 1. NAUCZYCIEL
 // ==========================================
 
 #[derive(Serialize)]
@@ -28,11 +33,132 @@ pub async fn nauczyciel_lista_przedmiotow(conn: &State<PgPool>) -> Result<Json<V
     }
 }
 
-// Handler dodawania ocen pozostaje bez zmian (INSERT)
-// Handler edycji (UPDATE) został usunięty zgodnie z instrukcją.
+#[derive(Deserialize)]
+pub struct NowaOcenaRequest {
+    pub id_ucznia: i32,
+    pub id_przedmiotu: i32,
+    pub typ_oceny: String, 
+    pub waga: i32,         
+    pub ocena: f32,
+    pub id_nauczyciela: i32, 
+}
+
+#[post("/nauczyciel/oceny", data = "<req>")]
+pub async fn nauczyciel_dodaj_ocene(
+    req: Json<NowaOcenaRequest>,
+    conn: &State<PgPool>,
+) -> Result<Status, Status> {
+    
+    // KROK 1: Szukamy id_typu_oceny lub tworzymy nowy
+    let szukany_typ = sqlx::query_scalar!(
+        "SELECT id_typu_oceny FROM Typy_Ocen WHERE nazwa_oceny = $1 AND waga = $2",
+        req.typ_oceny,
+        req.waga
+    )
+    .fetch_optional(conn.inner())
+    .await;
+
+    let id_typu_oceny = match szukany_typ {
+        Ok(Some(id)) => id, 
+        Ok(None) => {
+            let nowy_typ = sqlx::query_scalar!(
+                "INSERT INTO Typy_Ocen (nazwa_oceny, waga) VALUES ($1, $2) RETURNING id_typu_oceny",
+                req.typ_oceny,
+                req.waga
+            )
+            .fetch_one(conn.inner())
+            .await;
+
+            match nowy_typ {
+                Ok(id) => id,
+                Err(e) => {
+                    eprintln!("Błąd tworzenia nowego typu oceny: {}", e);
+                    return Err(Status::InternalServerError);
+                }
+            }
+        },
+        Err(e) => {
+            eprintln!("Błąd bazy podczas wyszukiwania typu oceny: {}", e);
+            return Err(Status::InternalServerError);
+        }
+    };
+
+    // KROK 2: Wstawiamy ocenę
+    let wstaw_ocene = sqlx::query!(
+        "INSERT INTO Oceny (id_ucznia, id_nauczyciela, id_przedmiotu, id_typu_oceny, ocena) 
+         VALUES ($1, $2, $3, $4, $5)",
+        req.id_ucznia,
+        req.id_nauczyciela,
+        req.id_przedmiotu,
+        id_typu_oceny,      
+        req.ocena as f64
+    )
+    .execute(conn.inner())
+    .await;
+
+    match wstaw_ocene {
+        Ok(_) => Ok(Status::Created),
+        Err(e) => {
+            eprintln!("Błąd wstawiania oceny: {}", e);
+            Err(Status::InternalServerError)
+        }
+    }
+}
+
+#[derive(Serialize)]
+pub struct KlasaResponse {
+    pub id_klasy: i32,
+    pub nazwa_klasy: String,
+}
+
+#[get("/nauczyciel/klasy")]
+pub async fn nauczyciel_lista_klas(conn: &State<PgPool>) -> Result<Json<Vec<KlasaResponse>>, Status> {
+    let klasy = sqlx::query_as!(
+        KlasaResponse,
+        "SELECT id_klasy, nazwa_klasy FROM Klasy ORDER BY nazwa_klasy"
+    )
+    .fetch_all(conn.inner())
+    .await;
+
+    match klasy {
+        Ok(k) => Ok(Json(k)),
+        Err(_) => Err(Status::InternalServerError),
+    }
+}
+
+#[derive(Serialize)]
+pub struct UczenWKlasieResponse {
+    pub id_ucznia: i32,
+    pub imie: Option<String>,     
+    pub nazwisko: Option<String>, 
+}
+
+#[get("/nauczyciel/klasy/<id_klasy>/uczniowie")]
+pub async fn nauczyciel_uczniowie_w_klasie(
+    id_klasy: i32,
+    conn: &State<PgPool>
+) -> Result<Json<Vec<UczenWKlasieResponse>>, Status> {
+    let uczniowie = sqlx::query_as!(
+        UczenWKlasieResponse,
+        r#"
+        SELECT id_ucznia, imie, nazwisko 
+        FROM Uczniowie 
+        WHERE id_klasy = $1 
+        ORDER BY nazwisko, imie
+        "#,
+        id_klasy
+    )
+    .fetch_all(conn.inner())
+    .await;
+
+    match uczniowie {
+        Ok(u) => Ok(Json(u)),
+        Err(_) => Err(Status::InternalServerError),
+    }
+}
 
 // ==========================================
-// C) UCZEŃ - Oceny pogrupowane po przedmiotach
+// 2. UCZEŃ
 // ==========================================
 
 #[derive(Serialize)]
@@ -54,8 +180,6 @@ pub async fn uczen_lista_ocen(
     id_ucznia: i32,
     conn: &State<PgPool>
 ) -> Result<Json<Vec<UczenOcenyPoPrzedmiotach>>, Status> {
-    
-    // Zapytanie pobierające wszystkie oceny ucznia wraz z nazwami przedmiotów i typami
     let rows = sqlx::query!(
         r#"
         SELECT 
@@ -63,7 +187,7 @@ pub async fn uczen_lista_ocen(
             o.ocena as "wartosc: f32",
             t.nazwa_oceny as nazwa_typu,
             t.waga,
-            o.id_oceny -- zakładamy, że data może być wyciągnięta z ID lub kolumny
+            o.id_oceny 
         FROM Oceny o
         JOIN Przedmioty p ON o.id_przedmiotu = p.id_przedmiotu
         JOIN Typy_Ocen t ON o.id_typu_oceny = t.id_typu_oceny
@@ -77,8 +201,6 @@ pub async fn uczen_lista_ocen(
 
     match rows {
         Ok(data) => {
-            // Grupowanie w pamięci Rusta (dla uproszczenia przykładu)
-            use std::collections::HashMap;
             let mut mapa: HashMap<String, Vec<SzczegolyOceny>> = HashMap::new();
 
             for row in data {
@@ -86,7 +208,7 @@ pub async fn uczen_lista_ocen(
                     wartosc: row.wartosc,
                     nazwa_typu: row.nazwa_typu,
                     waga: row.waga,
-                    data_wystawienia: None, // Dodaj kolumnę daty do tabeli Oceny, jeśli jej brak
+                    data_wystawienia: None, 
                 };
                 mapa.entry(row.nazwa_przedmiotu).or_default().push(szczegoly);
             }
@@ -102,20 +224,19 @@ pub async fn uczen_lista_ocen(
 }
 
 // ==========================================
-// D) ADMIN - Lista użytkowników z rolami
+// 3. ADMIN
 // ==========================================
 
 #[derive(Serialize)]
 pub struct AdminUzytkownikZRolemResponse {
     pub imie: Option<String>,
     pub nazwisko: Option<String>,
-    pub login: String,
-    pub rola: String,
+    pub login: Option<String>,
+    pub rola: Option<String>,
 }
 
 #[get("/admin/uzytkownicy")]
 pub async fn admin_lista_uzytkownikow(conn: &State<PgPool>) -> Result<Json<Vec<AdminUzytkownikZRolemResponse>>, Status> {
-    // Łączymy tabelę kont z tabelami profilowymi, aby wyciągnąć imiona i nazwiska
     let uzytkownicy = sqlx::query_as!(
         AdminUzytkownikZRolemResponse,
         r#"
@@ -134,6 +255,66 @@ pub async fn admin_lista_uzytkownikow(conn: &State<PgPool>) -> Result<Json<Vec<A
 
     match uzytkownicy {
         Ok(u) => Ok(Json(u)),
+        Err(_) => Err(Status::InternalServerError),
+    }
+}
+
+#[derive(Deserialize)]
+pub struct NowyUzytkownikRequest {
+    pub login: String,
+    pub haslo_jawne: String,
+    pub rola: String, 
+}
+
+#[post("/admin/uzytkownicy", data = "<req>")]
+pub async fn admin_dodaj_uzytkownika(
+    req: Json<NowyUzytkownikRequest>,
+    conn: &State<PgPool>,
+) -> Result<Status, Status> {
+    
+    let salt = SaltString::generate(&mut OsRng);
+    let argon2 = Argon2::default();
+    
+    let hash_hasla = match argon2.hash_password(req.haslo_jawne.as_bytes(), &salt) {
+        Ok(hash) => hash.to_string(),
+        Err(_) => return Err(Status::InternalServerError),
+    };
+
+    let result = sqlx::query!(
+        "INSERT INTO Konta_Uzytkownikow (login, haslo_hash, rola) 
+         VALUES ($1, $2, $3)",
+        req.login,
+        hash_hasla,
+        req.rola
+    )
+    .execute(conn.inner())
+    .await;
+
+    match result {
+        Ok(_) => Ok(Status::Created), 
+        Err(sqlx::Error::Database(db_err)) if db_err.is_unique_violation() => {
+            Err(Status::Conflict) 
+        }
+        Err(_) => Err(Status::InternalServerError),
+    }
+}
+
+#[delete("/admin/uzytkownicy/<login>")]
+pub async fn admin_usun_uzytkownika(
+    login: String,
+    conn: &State<PgPool>,
+) -> Result<Status, Status> {
+    
+    let result = sqlx::query!(
+        "DELETE FROM Konta_Uzytkownikow WHERE login = $1",
+        login
+    )
+    .execute(conn.inner())
+    .await;
+
+    match result {
+        Ok(res) if res.rows_affected() > 0 => Ok(Status::NoContent), 
+        Ok(_) => Err(Status::NotFound), 
         Err(_) => Err(Status::InternalServerError),
     }
 }
