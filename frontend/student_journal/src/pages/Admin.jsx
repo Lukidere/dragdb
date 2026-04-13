@@ -8,7 +8,7 @@ export default function PanelZarzadzania() {
     
     // Stany dla Modali
     const [showCreateModal, setShowCreateModal] = useState(false);
-    const [showPasswordModal, setShowPasswordModal] = useState(null); // przechowuje login usera któremu zmieniamy hasło
+    const [showPasswordModal, setShowPasswordModal] = useState(null); // przechowuje login usera, któremu zmieniamy hasło
 
     const navigate = useNavigate();
     const token = localStorage.getItem('token');
@@ -55,7 +55,7 @@ export default function PanelZarzadzania() {
 
             alert('Użytkownik utworzony!');
             setShowCreateModal(false);
-            fetchUsers(); // Odświeżamy listę
+            fetchUsers(); // Odświeżamy listę, żeby nowa osoba od razu się pojawiła
         } catch (err) {
             alert(err.message);
         }
@@ -128,14 +128,21 @@ export default function PanelZarzadzania() {
                     <tr style={{ backgroundColor: '#f8f9fa', textAlign: 'left' }}>
                         <th style={{ padding: '12px', border: '1px solid #ddd' }}>Imię i Nazwisko</th>
                         <th style={{ padding: '12px', border: '1px solid #ddd' }}>Login</th>
+                        {/* NOWA KOLUMNA */}
+                        <th style={{ padding: '12px', border: '1px solid #ddd' }}>Rola</th>
                         <th style={{ padding: '12px', border: '1px solid #ddd' }}>Akcje</th>
                     </tr>
                 </thead>
                 <tbody>
                     {uzytkownicy.map((user) => (
                         <tr key={user.login}>
-                            <td style={{ padding: '12px', border: '1px solid #ddd' }}>{user.imie} {user.nazwisko}</td>
+                            {/* Często z bazy imię/nazwisko może przyjść jako null (zgodnie ze Swaggerem), więc wyświetlamy "Brak danych" jeśli nic nie wpisano */}
+                            <td style={{ padding: '12px', border: '1px solid #ddd' }}>
+                                {user.imie || user.nazwisko ? `${user.imie || ''} ${user.nazwisko || ''}` : <span style={{color: '#999'}}>Brak danych</span>}
+                            </td>
                             <td style={{ padding: '12px', border: '1px solid #ddd', fontWeight: 'bold' }}>{user.login}</td>
+                            {/* WYŚWIETLANIE ROLI */}
+                            <td style={{ padding: '12px', border: '1px solid #ddd' }}>{user.rola}</td>
                             <td style={{ padding: '12px', border: '1px solid #ddd' }}>
                                 <button 
                                     onClick={() => setShowPasswordModal(user.login)}
@@ -161,9 +168,30 @@ export default function PanelZarzadzania() {
                     <div style={modalContentStyle}>
                         <h3>Nowy Użytkownik</h3>
                         <form onSubmit={handleCreateUser} style={formStyle}>
-                            <input name="login" placeholder="Login" required style={inputStyle} />
-                            <input name="haslo_jawne" type="password" placeholder="Hasło" required style={inputStyle} />
-                            <select name="rola" required style={inputStyle}>
+                            <input 
+                                name="login" 
+                                placeholder="Login" 
+                                required 
+                                style={inputStyle} 
+                                onInvalid={(e) => e.target.setCustomValidity('Wpisz login!')}
+                                onInput={(e) => e.target.setCustomValidity('')}
+                            />
+                            <input 
+                                name="haslo_jawne" 
+                                type="password" 
+                                placeholder="Hasło" 
+                                required 
+                                style={inputStyle} 
+                                onInvalid={(e) => e.target.setCustomValidity('Wpisz hasło!')}
+                                onInput={(e) => e.target.setCustomValidity('')}
+                            />
+                            <select 
+                                name="rola" 
+                                required 
+                                style={inputStyle}
+                                onInvalid={(e) => e.target.setCustomValidity('Wybierz rolę z listy!')}
+                                onInput={(e) => e.target.setCustomValidity('')}
+                            >
                                 <option value="UCZEN">Uczeń</option>
                                 <option value="NAUCZYCIEL">Nauczyciel</option>
                                 <option value="ADMIN">Administrator</option>
@@ -183,7 +211,15 @@ export default function PanelZarzadzania() {
                     <div style={modalContentStyle}>
                         <h3>Zmień hasło dla: {showPasswordModal}</h3>
                         <form onSubmit={handleChangePassword} style={formStyle}>
-                            <input name="nowe_haslo" type="password" placeholder="Nowe hasło" required style={inputStyle} />
+                            <input 
+                                name="nowe_haslo" 
+                                type="password" 
+                                placeholder="Nowe hasło" 
+                                required 
+                                style={inputStyle} 
+                                onInvalid={(e) => e.target.setCustomValidity('Musisz podać nowe hasło!')}
+                                onInput={(e) => e.target.setCustomValidity('')}
+                            />
                             <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                                 <button type="button" onClick={() => setShowPasswordModal(null)} style={{ flex: 1 }}>Anuluj</button>
                                 <button type="submit" style={{ flex: 1, backgroundColor: '#007bff', color: 'white' }}>Zapisz</button>

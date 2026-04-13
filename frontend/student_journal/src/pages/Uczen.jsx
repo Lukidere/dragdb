@@ -2,58 +2,59 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 export default function MojeOceny() {
-    // Stany dla danych z API
-    const [profil, setProfil] = useState(null);
+    const [ocenyPoPrzedmiotach, setOcenyPoPrzedmiotach] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     
     const navigate = useNavigate();
 
-    // Tymczasowe dane dopóki backend nie uzupełni endpointu ocen
-    const oceny = [
-        { przedmiot: 'Matematyka', oceny: [4, 5, 3.5], srednia: 4.17 },
-        { przedmiot: 'Język Polski', oceny: [5, 4, 4.5], srednia: 4.5 },
-        { przedmiot: 'Informatyka', oceny: [5, 5, 5], srednia: 5.0 },
-    ];
+    // Pobieramy login z pamięci, żeby móc przywitać użytkownika
+    const loginUcznia = localStorage.getItem('login');
 
-    // useEffect odpali się raz, po zamontowaniu komponentu
+    const obliczSredniaWazona = (listaOcen) => {
+        if (!listaOcen || listaOcen.length === 0) return '-';
+        
+        let sumaIloczynow = 0;
+        let sumaWag = 0;
+
+        listaOcen.forEach(ocena => {
+            sumaIloczynow += (ocena.wartosc * ocena.waga);
+            sumaWag += ocena.waga;
+        });
+
+        return sumaWag > 0 ? (sumaIloczynow / sumaWag).toFixed(2) : '-';
+    };
+
     useEffect(() => {
         const pobierzDane = async () => {
-            // Wyciągamy token zapisany podczas logowania
             const token = localStorage.getItem('token');
+            const idUcznia = localStorage.getItem('id_ucznia'); 
             
-            if (!token) {
-                // Jeśli ktoś wbił na /uczen bez logowania, wyrzucamy go za drzwi
+            if (!token || !idUcznia) {
                 navigate('/login');
                 return;
             }
 
             try {
-                // Uderzamy do API po profil ucznia
-                const response = await fetch('/api/uczen/profil', {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        // DODAJEMY TOKEN DO NAGŁÓWKA - to jest kluczowe!
-                        'Authorization': `Bearer ${token}` 
-                    }
+                // pobranie ocen
+                const resOceny = await fetch(`/api/uczen/oceny/${idUcznia}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
 
-                if (!response.ok) {
-                    if (response.status === 401) {
-                        // Token jest nieważny lub wygasł
-                        localStorage.removeItem('token');
-                        navigate('/login');
-                    }
-                    throw new Error('Nie udało się pobrać danych profilu.');
+                if (resOceny.status === 401) {
+                    localStorage.clear();
+                    navigate('/login');
+                    throw new Error('Sesja wygasła.');
                 }
 
-                const data = await response.json();
-                setProfil(data); // Zapisujemy dane ucznia w stanie
+                if (!resOceny.ok) throw new Error('Nie udało się pobrać ocen.');
+                
+                const daneOcen = await resOceny.json();
+                setOcenyPoPrzedmiotach(daneOcen);
 
             } catch (err) {
-                setError(err.message);
+                setError(err.message || 'Wystąpił nieoczekiwany błąd.');
             } finally {
-                // Zdejmujemy ekran ładowania niezależnie czy się udało, czy nie
                 setLoading(false); 
             }
         };
@@ -61,41 +62,66 @@ export default function MojeOceny() {
         pobierzDane();
     }, [navigate]);
 
-    // Ekran ładowania (żeby nie mrugał pusty interfejs)
     if (loading) {
         return <div style={{ padding: '20px' }}>Ładowanie danych...</div>;
     }
 
     return (
         <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
-            {/* Wyświetlamy błąd z API, jeśli jakiś wystąpił */}
             {error && <div style={{ color: 'red', marginBottom: '15px' }}>Błąd: {error}</div>}
 
-            {/* Renderujemy nagłówek z prawdziwymi danymi z bazy */}
-            {profil ? (
-                <h2>Panel Ucznia - {profil.imie} {profil.nazwisko} (Klasa {profil.nazwa_klasy})</h2>
-            ) : (
-                <h2>Panel Ucznia</h2>
-            )}
+            {/* Zmienione przywitanie - używamy loginu z localStorage, wcześniej było z profilu, ale w nowym API zniknęło */}
+            <h2>Panel Ucznia {loginUcznia ? `(${loginUcznia})` : ''}</h2>
             
-            <p>Witaj! Poniżej znajduje się zestawienie Twoich ocen.</p>
+            <p>Witaj! Poniżej znajduje się zestawienie Twoich ocen. Najedź myszką na ocenę, aby zobaczyć szczegóły.</p>
 
             <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '20px' }}>
                 <thead>
                     <tr style={{ backgroundColor: '#f4f4f4', textAlign: 'left' }}>
-                        <th style={{ padding: '10px', border: '1px solid #ddd' }}>Przedmiot</th>
-                        <th style={{ padding: '10px', border: '1px solid #ddd' }}>Oceny</th>
-                        <th style={{ padding: '10px', border: '1px solid #ddd' }}>Średnia</th>
+                        <th style={{ padding: '12px', border: '1px solid #ddd', width: '25%' }}>Przedmiot</th>
+                        <th style={{ padding: '12px', border: '1px solid #ddd', width: '60%' }}>Oceny</th>
+                        <th style={{ padding: '12px', border: '1px solid #ddd', width: '15%', textAlign: 'center' }}>Średnia ważona</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {oceny.map((item, index) => (
-                        <tr key={index}>
-                            <td style={{ padding: '10px', border: '1px solid #ddd' }}>{item.przedmiot}</td>
-                            <td style={{ padding: '10px', border: '1px solid #ddd' }}>{item.oceny.join(', ')}</td>
-                            <td style={{ padding: '10px', border: '1px solid #ddd', fontWeight: 'bold' }}>{item.srednia}</td>
+                    {ocenyPoPrzedmiotach.length === 0 ? (
+                        <tr>
+                            <td colSpan="3" style={{ padding: '15px', textAlign: 'center', color: '#666' }}>
+                                Brak ocen do wyświetlenia.
+                            </td>
                         </tr>
-                    ))}
+                    ) : (
+                        ocenyPoPrzedmiotach.map((przedmiot, index) => (
+                            <tr key={index}>
+                                <td style={{ padding: '12px', border: '1px solid #ddd', fontWeight: 'bold' }}>
+                                    {przedmiot.nazwa_przedmiotu}
+                                </td>
+                                <td style={{ padding: '12px', border: '1px solid #ddd' }}>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                        {przedmiot.oceny.map((ocena, idx) => (
+                                            <span 
+                                                key={idx}
+                                                title={`Typ: ${ocena.nazwa_typu} | Waga: ${ocena.waga} | Data: ${ocena.data_wystawienia}`}
+                                                style={{ 
+                                                    padding: '4px 8px', 
+                                                    backgroundColor: '#e9ecef', 
+                                                    borderRadius: '4px',
+                                                    cursor: 'help',
+                                                    fontWeight: '500'
+                                                }}
+                                            >
+                                                {ocena.wartosc}
+                                            </span>
+                                        ))}
+                                        {przedmiot.oceny.length === 0 && <span style={{ color: '#aaa' }}>Brak ocen</span>}
+                                    </div>
+                                </td>
+                                <td style={{ padding: '12px', border: '1px solid #ddd', fontWeight: 'bold', textAlign: 'center', fontSize: '18px' }}>
+                                    {obliczSredniaWazona(przedmiot.oceny)}
+                                </td>
+                            </tr>
+                        ))
+                    )}
                 </tbody>
             </table>
         </div>

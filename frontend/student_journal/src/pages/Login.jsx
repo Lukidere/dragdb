@@ -13,20 +13,19 @@ export default function Login() {
         setError('');
 
         try {
-            // 1. Uderzamy do API (dzięki proxy w Vite to poleci do Swaggera lub Twojego backendu)
+            // Połączenie z API do API
             const response = await fetch('/api/login', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                // Swagger wymaga pól "login" i "haslo", więc mapujemy nasze stany
+
                 body: JSON.stringify({ 
                     login: username, 
                     haslo: password 
                 })
             });
 
-            // 2. Sprawdzamy, czy serwer nie zwrócił błędu (np. 401 - zły login/hasło)
             if (!response.ok) {
                 if (response.status === 401) {
                     throw new Error('Błędny login lub hasło!');
@@ -35,15 +34,16 @@ export default function Login() {
                 }
             }
 
-            // 3. Parsujemy odpowiedź z JSON-a
             const data = await response.json();
 
-            // 4. Zapisujemy token (oraz rolę), żeby mieć do nich dostęp w innych miejscach apki
             localStorage.setItem('token', data.token);
             localStorage.setItem('rola', data.rola);
-            localStorage.setItem('login', data.login);
+            // uczeń ma otrzymać id_ucznia aby pobrać swoje oceny
+            if (data.id_ucznia) {
+                localStorage.setItem('id_ucznia', data.id_ucznia); 
+            }
 
-            // 5. Dynamiczne przekierowanie na podstawie roli z bazy danych
+            // Dynamiczne przekierowanie na podstawie roli z bazy danych
             switch (data.rola) {
                 case 'ADMIN':
                     navigate('/admin'); 
@@ -59,7 +59,6 @@ export default function Login() {
             }
 
         } catch (err) {
-            // Wyłapujemy błędy z rzucania wyżej (throw new Error) lub problemy z siecią
             setError(err.message || 'Wystąpił błąd podczas logowania.');
         }
     };

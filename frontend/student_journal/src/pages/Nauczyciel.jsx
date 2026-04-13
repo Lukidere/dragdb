@@ -3,28 +3,40 @@ import { useNavigate } from 'react-router-dom';
 
 export default function Nauczyciel() {
     const [klasy, setKlasy] = useState([]);
+    const [przedmioty, setPrzedmioty] = useState([]); // NOWY STAN: Trzyma listę przedmiotów z bazy
     const [wybranaKlasa, setWybranaKlasa] = useState(null);
-    const [uczenDoOceny, setUczenDoOceny] = useState(null); // Trzyma dane ucznia, któremu właśnie wystawiamy ocenę
+    const [uczenDoOceny, setUczenDoOceny] = useState(null);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(true);
 
     const navigate = useNavigate();
 
-    // Pobieranie klas i uczniów po wejściu na stronę
+    // Pobranie klas i przedmiotów z bazy danych
     useEffect(() => {
-        const pobierzKlasy = async () => {
+        const pobierzDane = async () => {
             const token = localStorage.getItem('token');
             if (!token) return navigate('/login');
 
             try {
-                const response = await fetch('/api/nauczyciel/klasy', {
+                // 1. Pobieranie klas
+                const resKlasy = await fetch('/api/nauczyciel/klasy', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!resKlasy.ok) throw new Error('Błąd pobierania klas.');
+                const daneKlasy = await resKlasy.json();
+                setKlasy(daneKlasy);
+
+                // 2. Pobieranie przedmiotów
+                const resPrzedmioty = await fetch('/api/nauczyciel/przedmioty', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
 
-                if (!response.ok) throw new Error('Błąd autoryzacji lub serwera.');
+                if (resPrzedmioty.ok) {
+                    const danePrzedmiotow = await resPrzedmioty.json();
+                    setPrzedmioty(danePrzedmiotow);
+                }
 
-                const data = await response.json();
-                setKlasy(data);
             } catch (err) {
                 setError(err.message);
             } finally {
@@ -32,20 +44,20 @@ export default function Nauczyciel() {
             }
         };
 
-        pobierzKlasy();
+        pobierzDane();
     }, [navigate]);
 
-    // Funkcja do wysyłania nowej oceny na backend
+    // Wysłanie nowej oceny
     const handleWystawOcene = async (e) => {
         e.preventDefault();
         const token = localStorage.getItem('token');
         
-        // Zbieramy dane z formularza
+        // Upewnienie się ,że dane pasują do formularza
         const nowaOcenaPayload = {
             id_ucznia: uczenDoOceny.id_ucznia,
-            id_przedmiotu: parseInt(e.target.przedmiot.value), // Swagger oczekuje integera
-            id_typu_oceny: parseInt(e.target.typ_oceny.value), // Swagger oczekuje integera
-            ocena: parseFloat(e.target.ocena.value) // Swagger oczekuje floata
+            id_przedmiotu: parseInt(e.target.przedmiot.value),
+            id_typu_oceny: parseInt(e.target.typ_oceny.value), 
+            ocena: parseFloat(e.target.ocena.value) 
         };
 
         try {
@@ -60,15 +72,15 @@ export default function Nauczyciel() {
 
             if (!response.ok) throw new Error('Nie udało się dodać oceny.');
 
-            alert('Ocena dodana pomyślnie!'); // Możesz to potem zamienić na ładnego Toasta
-            setUczenDoOceny(null); // Zamykamy modal
+            alert('Ocena dodana pomyślnie!');
+            setUczenDoOceny(null);
 
         } catch (err) {
             alert(err.message);
         }
     };
 
-    if (loading) return <div style={{ padding: '20px' }}>Ładowanie klas...</div>;
+    if (loading) return <div style={{ padding: '20px' }}>Ładowanie danych...</div>;
 
     return (
         <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
@@ -121,7 +133,7 @@ export default function Nauczyciel() {
                 </table>
             )}
 
-            {/* KROK 3: Modal do wstawiania oceny (wyświetla się tylko, gdy uczenDoOceny nie jest nullem) */}
+            {/* KROK 3: Modal do wstawiania oceny */}
             {uczenDoOceny && (
                 <div style={{
                     position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', 
@@ -131,22 +143,50 @@ export default function Nauczyciel() {
                         <h3>Oceniasz: {uczenDoOceny.imie} {uczenDoOceny.nazwisko}</h3>
                         
                         <form onSubmit={handleWystawOcene} style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
-                            {/* Tymczasowe dane dla ID przedmiotu (w realu pobierane z API) */}
-                            <select name="przedmiot" required style={{ padding: '8px' }}>
+                            
+                            {/* DYNAMICZNA LISTA PRZEDMIOTÓW + POLSKA WALIDACJA */}
+                            <select 
+                                name="przedmiot" 
+                                required 
+                                style={{ padding: '8px' }}
+                                onInvalid={(e) => e.target.setCustomValidity('Wybierz przedmiot z listy!')}
+                                onInput={(e) => e.target.setCustomValidity('')}
+                            >
                                 <option value="">-- Wybierz przedmiot --</option>
-                                <option value="1">Matematyka</option>
-                                <option value="2">Język Polski</option>
+                                {przedmioty.map(p => (
+                                    <option key={p.id_przedmiotu} value={p.id_przedmiotu}>
+                                        {p.nazwa}
+                                    </option>
+                                ))}
                             </select>
 
-                            {/* Tymczasowe dane dla Typu oceny */}
-                            <select name="typ_oceny" required style={{ padding: '8px' }}>
+                            {/* TYPY OCEN */}
+                            <select 
+                                name="typ_oceny" 
+                                required 
+                                style={{ padding: '8px' }}
+                                onInvalid={(e) => e.target.setCustomValidity('Wybierz typ oceny!')}
+                                onInput={(e) => e.target.setCustomValidity('')}
+                            >
                                 <option value="">-- Wybierz typ --</option>
                                 <option value="1">Sprawdzian</option>
                                 <option value="2">Kartkówka</option>
                                 <option value="3">Odpowiedź ustna</option>
                             </select>
 
-                            <input type="number" name="ocena" step="0.5" min="1" max="6" required placeholder="Wpisz ocenę (np. 4.5)" style={{ padding: '8px' }} />
+                            {/* INPUT Z OCENĄ*/}
+                            <input 
+                                type="number" 
+                                name="ocena" 
+                                step="0.5" 
+                                min="1" 
+                                max="6" 
+                                required 
+                                placeholder="Wpisz ocenę (np. 4.5)" 
+                                style={{ padding: '8px' }} 
+                                onInvalid={(e) => e.target.setCustomValidity('Wpisz poprawną ocenę od 1 do 6!')}
+                                onInput={(e) => e.target.setCustomValidity('')}
+                            />
 
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
                                 <button type="button" onClick={() => setUczenDoOceny(null)} style={{ padding: '10px', cursor: 'pointer' }}>Anuluj</button>
