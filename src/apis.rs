@@ -8,6 +8,87 @@ use argon2::{
 };
 use std::collections::HashMap;
 
+
+
+
+// ==========================================
+// LOGOWANIE
+// ==========================================
+
+#[derive(Deserialize)]
+pub struct LoginRequest {
+    pub login: String,
+    pub haslo_jawne: String,
+}
+
+#[derive(Serialize)]
+pub struct LoginResponse {
+    pub rola: String,
+    pub id_osoby: Option<i32>, 
+}
+
+#[post("/login", data = "<req>")]
+pub async fn login_handler(
+    req: Json<LoginRequest>,
+    conn: &State<PgPool>,
+) -> Result<Json<LoginResponse>, Status> {
+    
+    let konto = sqlx::query!(
+        "SELECT haslo_hash, rola FROM Konta_Uzytkownikow WHERE login = $1",
+        req.login
+    )
+    .fetch_optional(conn.inner())
+    .await;
+
+    let konto_dane = match konto {
+        Ok(Some(k)) => k,
+        Ok(None) => return Err(Status::Unauthorized),
+        Err(e) => {
+            eprintln!("Błąd bazy podczas logowania: {}", e);
+            return Err(Status::InternalServerError);
+        }
+    };
+
+    let parsed_hash = match PasswordHash::new(&konto_dane.haslo_hash) {
+        Ok(hash) => hash,
+        Err(_) => return Err(Status::InternalServerError),
+    };
+
+    let argon2 = Argon2::default();
+    if argon2.verify_password(req.haslo_jawne.as_bytes(), &parsed_hash).is_err() {
+        return Err(Status::Unauthorized); // Złe hasło
+    }
+
+    let mut id_osoby: Option<i32> = None;
+
+    if konto_dane.rola == "UCZEN" {
+        let uczen = sqlx::query!("SELECT id_ucznia FROM Uczniowie WHERE login = $1", req.login)
+            .fetch_optional(conn.inner())
+            .await
+            .unwrap_or(None);
+            
+        if let Some(u) = uczen {
+            id_osoby = Some(u.id_ucznia);
+        }
+    } else if konto_dane.rola == "NAUCZYCIEL" {
+        let nauczyciel = sqlx::query!("SELECT id_nauczyciela FROM Nauczyciele WHERE login = $1", req.login)
+            .fetch_optional(conn.inner())
+            .await
+            .unwrap_or(None);
+            
+        if let Some(n) = nauczyciel {
+            id_osoby = Some(n.id_nauczyciela);
+        }
+    }
+
+    // 5. Zwracamy odpowiedź do frontendu
+    Ok(Json(LoginResponse {
+        rola: konto_dane.rola,
+        id_osoby,
+    }))
+}
+
+
 // ==========================================
 // 1. NAUCZYCIEL
 // ==========================================
@@ -17,6 +98,8 @@ pub struct PrzedmiotResponse {
     pub id_przedmiotu: i32,
     pub nazwa: String,
 }
+
+
 
 #[get("/nauczyciel/przedmioty")]
 pub async fn nauczyciel_lista_przedmiotow(conn: &State<PgPool>) -> Result<Json<Vec<PrzedmiotResponse>>, Status> {
